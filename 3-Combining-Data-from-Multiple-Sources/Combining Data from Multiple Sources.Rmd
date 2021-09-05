@@ -1,0 +1,53 @@
+---
+title: "DATA 607 - Lab 3 - Combining Data from Multiple Sources"
+author: "Preston Peck"
+date: "9/5/2021"
+output: html_document
+---
+
+### Import Dependencies
+
+```{r}
+require("RPostgreSQL")
+```
+
+##### Password Protection (left intentionally visible)
+
+```{r}
+secret <- {
+  "password"
+}
+```
+
+##### Connect
+
+```{r}
+driver <- dbDriver("PostgreSQL")
+connection <- dbConnect(driver, dbname = "tb",
+                 host = "localhost", port = 5432,
+                 user = "postgres", password = secret)
+rm(secret)
+```
+
+### Database Query
+
+```{r}
+rateByCountryYearQuery <-
+"select c.country, c.year, (cast((child_cases + adult_cases + elderly_cases) as decimal) / population) * 100 as rate
+from(
+	select country, year, 
+	sum(child) as child_cases, 
+	sum(adult) as adult_cases,
+		sum(elderly) as elderly_cases
+		from tb 
+		where child is not null and adult is not null and elderly is not null
+		group by country, year
+		order by country, year
+	) as c
+left join population as p
+on c.country = p.country and c.year = p.year
+order by country, year;"
+
+rateByCountryYear <- dbGetQuery(connection, rateByCountryYearQuery)
+rateByCountryYear
+```
